@@ -1,0 +1,34 @@
+// 指定 proto 的版本信息
+syntax = "proto3";
+
+// 指定所在包的包名
+package kvStore;
+
+// 指定生成的 go 文件存放位置及其包名，父级目录下的kvStore文件夹
+option go_package = "../kvStore";
+
+message PutAppendArgs {
+  string Key = 1;
+  string Value = 2;
+  string Op  = 3; //"Put" or "Append"
+  //实现线性一致性所需的额外字段
+  int64 ClientId = 4;
+  int64 SeqId = 5;
+}
+message PutAppendReply {
+   string Err = 1;
+}
+message GetArgs {
+  string Key = 1;
+  int64 ClientId =2;
+  int64 SeqId = 3;
+}
+message GetReply {
+  string Err = 1;
+  string Value =2;
+}
+// 定义 rpc 服务
+service KvStoreService {
+  rpc Get(GetArgs) returns (GetReply);
+  rpc PutAppend(PutAppendArgs) returns (PutAppendReply);
+}

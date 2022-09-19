@@ -1,0 +1,52 @@
+// 指定 proto 的版本信息
+syntax = "proto3";
+
+// 指定所在包的包名
+package rpc;
+
+// 指定生成的 go 文件存放位置及其包名
+option go_package = "../rpc";
+
+message Op {
+  int64 Index= 1; //
+  int64 Term = 2;
+  string Type =3;
+  string Key = 4;
+  string Value = 5;
+  int64 SeqId = 6;
+  int64 ClientId = 7;
+}
+// 定义请求消息体
+message GetUserInfoReq {
+  int64 user_id = 1;
+}
+// 定义响应消息体
+message RequestVoteArgs {
+  int64 Term = 1;
+  int64 CandidateId = 2;
+  int64 LastLogIndex = 3;
+  int64 LastLogTerm = 4;
+}
+message RequestVoteReply {
+  int64 Term = 1;
+  bool VoteGranted = 2;
+}
+message AppendEntriesArgs {
+  int64 Term = 1;
+  int64 LeaderId = 2;
+  int64 PrevLogIndex = 3;
+  int64 PrevLogTerm = 4;
+  int64 LeaderCommitIndex = 5;
+  repeated Op LogEntry = 6;
+}
+message AppendEntriesReply {
+  int64 Term = 1;
+  bool Success = 2;
+}
+// 定义 rpc 服务
+service RaftService {
+  // 投票rpc
+  rpc RequestVote(RequestVoteArgs) returns (RequestVoteReply);
+  //日志复制以及心跳rpc
+  rpc AppendEntries(AppendEntriesArgs) returns (AppendEntriesReply);
+}
