@@ -30,7 +30,8 @@ cd到主目录 启动
 go run main.go ${serverId}  //serverId节点数0~n-1
 ```
 
-4调用api 复制client目录 到src目录下（里面的kvStore目录为编译好的kvStore文件，如有异常请复制DistributedKvStore/kvStore下的kvStore.proto文件到client目录下，再自行编译）
+4调用api 
+复制client目录 到你的项目目录下（里面的kvStore目录为编译好的kvStore文件，如有异常请复制DistributedKvStore/kvStore下的kvStore.proto文件到client目录下，再自行编译）
 
 ```
 func main() {
