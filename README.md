@@ -1,4 +1,5 @@
 # 分布式kv存储系统
+
 基于Mit6.824的lab2，lab3以及grpc实现
 
 ## 如何使用 
@@ -30,8 +31,7 @@ cd到主目录 启动
 go run main.go ${serverId}  //serverId节点数0~n-1
 ```
 
-4调用api 
-复制client目录 到你的项目目录下（里面的kvStore目录为编译好的kvStore文件，如有异常请复制DistributedKvStore/kvStore下的kvStore.proto文件到client目录下，再自行编译）
+4调用api 复制client目录到你的目录下（里面的kvStore目录为编译好的kvStore文件，如有异常请复制DistributedKvStore/kvStore下的kvStore.proto文件到client目录下，再自行编译）
 
 ```
 func main() {
@@ -60,3 +60,8 @@ func main() {
 }
 ```
 
+## 后续改进
+
+1优化raftlog 添加日志压缩（lab3B运行不够完美所以先完善一下在加入快照）
+
+2添加分布式事务，实现方案为percolator事务(学习ing)
