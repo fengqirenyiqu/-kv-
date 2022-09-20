@@ -144,6 +144,7 @@ func (rf *Raft) AppendEntries(ctx context.Context, args *rpc.AppendEntriesArgs) 
 	}
 	if args.PrevLogIndex != -1 {
 		if rf.Logs[args.PrevLogIndex].Term != args.PrevLogTerm {
+			rf.logs = rf.logs[:args.PrevLogIndex+1] //日志不匹配,说明后面的日志也不符合要求，截断
 			reply.Success = false
 			return reply, nil
 		}
@@ -160,13 +161,23 @@ func (rf *Raft) AppendEntries(ctx context.Context, args *rpc.AppendEntriesArgs) 
 		rf.State = 0    //讲candidate恢复为follower
 		reply.Term = -1 //说明这是心跳信息返回
 	} else {
-		rf.Logs = rf.Logs[:args.PrevLogIndex+1]
-		for _, v := range args.LogEntry {
-			rf.Logs = append(rf.Logs, v)
+		//rf.Logs = rf.Logs[:args.PrevLogIndex+1]
+		//for _, v := range args.LogEntry {
+		//	rf.Logs = append(rf.Logs, v)
+		//}
+		//优化Entry添加，上面那种不好是因为，旧的日志信息延迟抵达的话，会把旧日志信息后面新添加的日志也截断了再添加，下面这种不会
+		logs := rf.logs[args.PrevLogIndex+1:]
+		for i, _ := range args.Entry {
+			if i <= len(logs)-1 {
+				logs[i] = args.Entry[i]
+			}
+			if i > len(logs)-1 {
+				logs = append(logs, args.Entry[i])
+			}
 		}
-		//fmt.Printf("    raft:%v Term:%v 复制了日志,更新为%v \n", rf.Me, rf.CurrentTerm, rf.Logs[len(rf.Logs)-1])
+		rf.logs = rf.logs[:args.PrevLogIndex+1]
+		rf.logs = append(rf.logs, logs...)
 	}
-	//把比对上之后,后面的给清空,
 	reply.Success = true
 	//fmt.Printf("    raft:%v Term:%v 返回了reply.Success %v,reply.Term %v \n", rf.Me, rf.CurrentTerm, reply.Success, reply.Term)
 	//更新CommitIndex
