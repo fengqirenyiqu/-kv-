@@ -52,7 +52,7 @@ func Make(peers []*config.ClientEnd, me int64,
 	//TODO 修改peers配置
 	rf.Peers = peers
 	rf.Me = me
-	rf.GrpcClient = make([]rpc.RaftServiceClient, len(rf.Peers))
+	//rf.GrpcClient = make([]rpc.RaftServiceClient, len(rf.Peers))
 	//rf.InitGrpcClient()
 	//--------------------------------------------------------
 	// Your initialization code here (2A, 2B, 2C).
