@@ -1,14 +1,17 @@
-package main
+package test
 
 import (
 	"DistributedKvStore/client"
 	"DistributedKvStore/config"
 	"DistributedKvStore/rpc"
+	"bytes"
 	"context"
+	"encoding/gob"
 	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"io/ioutil"
 	"testing"
 )
 
@@ -50,13 +53,30 @@ func TestAppendEntries(t *testing.T) {
 	fmt.Println(reply.Success, 55)
 }
 func TestDbSave(t *testing.T) {
-	db, err := leveldb.OpenFile("./test0.db", nil)
+	db, err := leveldb.OpenFile("../test1.db", nil)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	data, err := db.Get([]byte("test"), nil)
+	data, err := db.Get([]byte("okokokok"), nil)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 	fmt.Println(string(data))
+}
+
+func TestPersist(t *testing.T) {
+	path := fmt.Sprintf("../raftPersist%v", 2) //单服务器测试可以这样
+	result, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	r := bytes.NewReader(result)
+	var votedFor int64
+	logs := []*rpc.Op{}
+	var currentTerm int64
+	d := gob.NewDecoder(r)
+	d.Decode(&logs)
+	d.Decode(&votedFor)
+	d.Decode(&currentTerm)
+	fmt.Println(votedFor, logs, currentTerm)
 }

@@ -4,7 +4,6 @@ import (
 	"DistributedKvStore/config"
 	"DistributedKvStore/rpc"
 	"context"
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -16,12 +15,12 @@ type ApplyMsg struct {
 	CommandIndex int64
 }
 type Raft struct {
-	Mu         sync.Mutex          // Lock to protect shared access to this peer's State
-	Peers      []*config.ClientEnd // RPC end points of all peers
-	GrpcClient []rpc.RaftServiceClient
-	Persister  *Persister // Object to hold thIs peer's persisted State
-	Me         int64      // this peer's index into peers[]
-	Dead       int64      // set by Kill()
+	Mu    sync.Mutex          // Lock to protect shared access to this peer's State
+	Peers []*config.ClientEnd // RPC end points of all peers
+	//GrpcClient []rpc.RaftServiceClient
+	Persister *Persister // Object to hold thIs peer's persisted State
+	Me        int64      // this peer's index into peers[]
+	Dead      int64      // set by Kill()
 
 	// Your data here (2A, 2B, 2C).
 	Overtime           time.Duration
@@ -60,7 +59,7 @@ func (rf *Raft) RequestVote(ctx context.Context, args *rpc.RequestVoteArgs) (*rp
 		rf.State = 0
 		rf.CurrentTerm = args.Term
 		//fmt.Println("降级")
-		//rf.persist()
+		rf.persist()
 		rf.reset_election_timeout()
 		//rf.election_timeout = time.NewTimer(rf.overtime * time.Millisecond)
 	}
@@ -69,7 +68,7 @@ func (rf *Raft) RequestVote(ctx context.Context, args *rpc.RequestVoteArgs) (*rp
 		rf.VotedFor = -1
 		rf.State = 0
 		rf.CurrentTerm = args.Term
-		//rf.persist()
+		rf.persist()
 		//rf.election_timeout = time.NewTimer(rf.overtime * time.Millisecond)
 	}
 	reply.Term = rf.CurrentTerm
@@ -88,11 +87,11 @@ func (rf *Raft) RequestVote(ctx context.Context, args *rpc.RequestVoteArgs) (*rp
 		//2-B带日志信息的复杂选举规则
 		if args.LastLogTerm > lastLogTerm || (args.LastLogTerm == lastLogTerm && args.LastLogIndex >= lastLogIndex) {
 			rf.VotedFor = args.CandidateId
-			fmt.Printf("    raft:%v Term:%v  投票给了%v 我的日志长度:%v,lastLogTerm:%v,lastLogIndex:%v ,Args.LastLogTerm:%v,Agrs.LastLogIndex:%v\n", rf.Me, rf.CurrentTerm, rf.VotedFor, len(rf.Logs), lastLogTerm, lastLogIndex, args.LastLogTerm, args.LastLogIndex)
+			//fmt.Printf("    raft:%v Term:%v  投票给了%v 我的日志长度:%v,lastLogTerm:%v,lastLogIndex:%v ,Args.LastLogTerm:%v,Agrs.LastLogIndex:%v\n", rf.Me, rf.CurrentTerm, rf.VotedFor, len(rf.Logs), lastLogTerm, lastLogIndex, args.LastLogTerm, args.LastLogIndex)
 			reply.VoteGranted = true
 			//reply.Term = rf.CurrentTerm
 			rf.reset_election_timeout() //给别人投票,重置投票时间
-			//rf.persist()
+			rf.persist()
 			return reply, nil
 		}
 	}
@@ -128,7 +127,7 @@ func (rf *Raft) AppendEntries(ctx context.Context, args *rpc.AppendEntriesArgs) 
 		rf.CurrentTerm = args.Term
 		rf.VotedFor = -1
 		rf.State = 0
-		//rf.persist()
+		rf.persist()
 	}
 	//假如自己是同期的candidate,自己更新状态为follower
 	if rf.State == 1 {
@@ -188,10 +187,7 @@ func (rf *Raft) AppendEntries(ctx context.Context, args *rpc.AppendEntriesArgs) 
 	}
 	//rf.CommitIndex = args.LeaderCommitIndex
 	rf.StateMachine()
-
-	//fmt.Printf("    raft:%v Term:%v 复制了日志,更新为%v \n", rf.me, rf.CurrentTerm, len(rf.logs)-1)
-	//rf.persist()
-	////fmt.Printf("    raft:%v Term:%v 持久化了日志\n", rf.me, rf.CurrentTerm)
+	rf.persist()
 	return reply, nil
 }
 

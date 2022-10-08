@@ -3,8 +3,11 @@ package service
 import (
 	"DistributedKvStore/config"
 	"DistributedKvStore/rpc"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"math/rand"
+	"os"
 	"sync/atomic"
 	"time"
 )
@@ -38,7 +41,7 @@ func (rf *Raft) Start(op *rpc.Op) (int64, int64, bool) {
 	//for Server, _ := range rf.peers {
 	//	rf.nextIndex[Server] = index - 1
 	//}
-	//rf.persist()
+	rf.persist()
 	return index, term, isLeader
 }
 func Make(peers []*config.ClientEnd, me int64,
@@ -50,7 +53,7 @@ func Make(peers []*config.ClientEnd, me int64,
 	rf.Peers = peers
 	rf.Me = me
 	rf.GrpcClient = make([]rpc.RaftServiceClient, len(rf.Peers))
-	rf.InitGrpcClient()
+	//rf.InitGrpcClient()
 	//--------------------------------------------------------
 	// Your initialization code here (2A, 2B, 2C).
 	rf.VotedFor = int64(-1)
@@ -65,7 +68,7 @@ func Make(peers []*config.ClientEnd, me int64,
 	go rf.ticker()
 	//go rf.StateMachine()
 	// initialize from State persisted before a crasht
-	//rf.readPersist(persister.ReadRaftState())
+	rf.readPersist(persister.readPersist(rf.Me))
 	return rf
 }
 
@@ -92,9 +95,6 @@ func (rf *Raft) ticker() {
 			select {
 			case <-rf.Heartbeat_interval.C:
 				rf.broadcastAppendEntries()
-				//rf.HeartBeat()
-				////fmt.Println("leader发送了日志信息")
-				//rf.brocastAppendLogs()
 			default:
 				time.Sleep(2 * time.Millisecond)
 			}
@@ -110,7 +110,7 @@ func (rf *Raft) Candidate() {
 	rf.State = int64(1)
 	fmt.Printf("    raft:%v Term:%v  become candidate  \n", rf.Me, rf.CurrentTerm)
 	rf.VotedFor = rf.Me
-	//rf.persist()
+	rf.persist()
 	voteNumber := int64(1)
 	//TODO
 	//2-B中优化投票规则
@@ -200,18 +200,15 @@ func (rf *Raft) broadcastAppendEntries() {
 						//fmt.Printf("    raft:%v Term:%v  发给%v的日志匹配成功 \n", rf.Me, rf.CurrentTerm, server)
 						atomic.AddInt32(&ans, 1)
 						if ans > (int32)(len(rf.Peers)/2) {
-							fmt.Println("日志提交成功")
+							//fmt.Println("日志提交成功")
 							//tmp := rf.nextIndex[server]
 							rf.NextIndex[server] = int64(len(rf.Logs)) // 为什么是这个,加入没有命令进来,那下次entry就是[1:],并不会越界,len(entry)=0,并且一旦有命令进来entry不为0
-							//加强提交条件,否则过不了figure8,加强的原因就是为了保证已经follower提交的一定是已经提交的内容
+							//加强提交条件,原因可以看figure8,
 							rf.MatchIndex[server] = rf.NextIndex[server]
 							if rf.Logs[index-1].Term == rf.CurrentTerm {
 								rf.CommitIndex = index
 								rf.StateMachine()
 							}
-							//if rf.logs[len(rf.logs)-1].Term == rf.CurrentTerm {
-							//	rf.CommitIndex = len(rf.logs)
-							//	rf.StateMachine()
 							// 困惑的点,还剩下部分follower怎么办,
 							//答:假如后续有新的命令进来,剩下的follower虽然会复制最新的日志,但是只会提交到被提交到的位置,
 							ans = -1 //保证幂等性,
@@ -228,7 +225,7 @@ func (rf *Raft) broadcastAppendEntries() {
 							rf.VotedFor = -1
 							rf.State = 0
 							rf.reset_election_timeout()
-							//rf.persist()
+							rf.persist()
 							rf.Mu.Unlock()
 							break
 						} else {
@@ -260,4 +257,39 @@ func (rf *Raft) Kill() {
 func (rf *Raft) killed() bool {
 	z := atomic.LoadInt64(&rf.Dead)
 	return z == 1
+}
+
+func (rf *Raft) persist() {
+	path := fmt.Sprintf("./raftPersist%v", rf.Me) //单服务器测试可以这样
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+	defer f.Close()
+	var n int64
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		// offset
+		//os.Truncate(filename, 0) //clear
+		n, _ = f.Seek(0, os.SEEK_END)
+	}
+	w := new(bytes.Buffer)
+	e := gob.NewEncoder(w)
+	e.Encode(rf.Logs)
+	e.Encode(rf.VotedFor)
+	e.Encode(rf.CurrentTerm)
+	data := w.Bytes()
+	f.WriteAt(data, n)
+}
+
+func (rf *Raft) readPersist(data []byte) {
+	r := bytes.NewReader(data)
+	var votedFor int64
+	logs := []*rpc.Op{}
+	var currentTerm int64
+	d := gob.NewDecoder(r)
+	d.Decode(&votedFor)
+	d.Decode(&logs)
+	d.Decode(&currentTerm)
+	rf.Logs = logs
+	rf.CurrentTerm = currentTerm
+	rf.VotedFor = votedFor
 }
