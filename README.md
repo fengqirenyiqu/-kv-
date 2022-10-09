@@ -2,7 +2,7 @@
 
 1 共识算法 Raft
 2 grpc的使用
-3 leveldb的建议使用(准备替换成自己实现的KV存储程序，给基于LSM tree)
+3 leveldb的简易使用(准备替换成自己实现的KV存储程序，基于LSM tree)
 
 ## 如何使用 
 
