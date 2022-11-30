@@ -6,7 +6,7 @@
 
 ## 如何使用 
 
-1 确定你以及导入了grpc所需插件以及库（开启gomod，如需关闭，请把下列库放到gopath/src下）
+1 确定你已经导入了grpc所需插件以及库（开启gomod，如需关闭，请把下列库放到gopath/src下）
 
 ```
 go get -u google.golang.org/grpc/cmd/protoc-gen-go-grpc
